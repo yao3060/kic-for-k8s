@@ -1,0 +1,40 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: test-jwt-credential
+  namespace: default
+  labels:
+    konghq.com/credential: jwt
+type: Opaque
+stringData:
+  kongCredType: jwt
+  key: "production-issuer" # 这个值需要与 token 中的iss字段匹配， 关联第9行 #line9
+  secret: "production-secret-key-2025"
+  algorithm: "HS256"
+---
+apiVersion: configuration.konghq.com/v1
+kind: KongConsumer
+metadata:
+  name: test-jwt-user
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: kong
+username: test-jwt-user
+credentials:
+- test-jwt-credential
+---
+apiVersion: configuration.konghq.com/v1
+kind: KongPlugin
+metadata:
+  name: test-jwt-auth
+  namespace: default
+config:
+  key_claim_name: iss
+  claims_to_verify:
+    - nbf
+    - exp
+  header_names:
+    - authorization
+  run_on_preflight: true
+plugin: jwt

@@ -1,0 +1,75 @@
+apiVersion: configuration.konghq.com/v1
+kind: KongPlugin
+metadata:
+  name: test-jwt-headers-final
+plugin: pre-function
+config:
+  access:
+  - |
+    -- 不使用 cjson，手动解析 JWT payload
+    local function safe_execute()
+        -- 获取 Authorization 头部
+        local auth_header = kong.request.get_header("authorization")
+        if not auth_header then
+            return
+        end
+        
+        -- 提取 Bearer token
+        local token = string.match(auth_header, "Bearer%s+(.+)")
+        if not token then
+            return
+        end
+        
+        -- 分割 JWT（简单方法）
+        local dot1 = string.find(token, "%.")
+        if not dot1 then
+            return
+        end
+        
+        local dot2 = string.find(token, "%.", dot1 + 1)
+        if not dot2 then
+            return
+        end
+        
+        -- 提取 payload 部分
+        local payload_b64 = string.sub(token, dot1 + 1, dot2 - 1)
+        
+        -- 添加 base64 填充
+        local remainder = #payload_b64 % 4
+        if remainder > 0 then
+            payload_b64 = payload_b64 .. string.rep('=', 4 - remainder)
+        end
+        
+        -- 转换 URL 安全字符
+        payload_b64 = string.gsub(payload_b64, '-', '+')
+        payload_b64 = string.gsub(payload_b64, '_', '/')
+        
+        -- 解码 base64
+        local payload_json = ngx.decode_base64(payload_b64)
+        if not payload_json then
+            return
+        end
+        
+        -- 手动解析 JSON 中的特定字段（避免使用 cjson）
+        -- 查找 "sub": 数字
+        local sub = string.match(payload_json, '"sub"%s*:%s*(%d+)')
+        if sub then
+            kong.service.request.set_header("X-JWT-Sub", sub)
+        end
+        
+        
+        -- 查找 "roles": ["user"] 或类似的数组
+        local roles = string.match(payload_json, '"roles"%s*:%s*(%[[^%]]*%])')
+        if roles then
+            kong.service.request.set_header("X-JWT-Roles", roles)
+        end
+        
+        -- 添加成功标记
+        kong.service.request.set_header("X-JWT-Parsed", "success")
+    end
+    
+    -- 安全执行，捕获所有错误
+    local ok, err = pcall(safe_execute)
+    if not ok then
+        kong.service.request.set_header("X-JWT-Error", tostring(err))
+    end

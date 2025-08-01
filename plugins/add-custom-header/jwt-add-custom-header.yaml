@@ -1,0 +1,9 @@
+apiVersion: configuration.konghq.com/v1
+kind: KongPlugin
+metadata:
+  name: add-custom-header
+  namespace: default
+plugin: add-custom-header
+config:
+  header_name: "X-Custom-Header"
+  header_value: "HelloWorld"

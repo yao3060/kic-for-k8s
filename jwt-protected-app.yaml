@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: protected-app
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: protected-app
+  template:
+    metadata:
+      labels:
+        app: protected-app
+    spec:
+      containers:
+      - name: protected-app
+        image: ealen/echo-server:latest
+        ports:
+        - containerPort: 80
+        env:
+        - name: PORT
+          value: "80"
+        - name: ECHO_INCLUDE_ENV_VARS
+          value: "false"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: protected-service
+  namespace: default
+spec:
+  selector:
+    app: protected-app
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
+  type: ClusterIP
+---
+# 带 JWT 认证的 Ingress（使用服务级别插件绑定）
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: protected-ingress
+  namespace: default
+  annotations:
+    # 现在可以安全地使用插件绑定了
+    konghq.com/plugins: test-jwt-auth,test-jwt-headers-final
+spec:
+  ingressClassName: kong
+  rules:
+  - host: protected.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: protected-service
+            port:
+              number: 80

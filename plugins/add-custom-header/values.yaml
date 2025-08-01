@@ -1,0 +1,5 @@
+gateway:
+  plugins:
+    configMaps:
+      - name: kong-plugin-addheader
+        pluginName: add-custom-header
