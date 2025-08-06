@@ -165,3 +165,12 @@ annotations:
 ```
 
 确保 JWT 认证插件先执行，头部提取插件后执行。
+
+
+## Helpers
+
+临时运行 curl 测试：
+
+```bash
+kubectl run test-curl --image=curlimages/curl --rm -it --restart=Never -- sh
+```
