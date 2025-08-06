@@ -1,12 +1,12 @@
-# install kong plugin 
+# Install Kong Plugin: add-custom-header
 
 ## 📦 一、自定义插件准备与 ConfigMap 创建
 假设你本地已有插件目录 add-custom-header/，包含 handler.lua 和 schema.lua：
 
 ```bash
 kubectl create configmap kong-plugin-addheader \
---from-file=add-custom-header/handler.lua \
---from-file=add-custom-header/schema.lua -n kong
+--from-file=handler.lua \
+--from-file=schema.lua -n kong
 ```
 该 ConfigMap 会把插件目录打包上传至 Kubernetes。
 
@@ -36,7 +36,7 @@ gateway:
 ```bash
 helm upgrade kong kong/ingress -n kong --create-namespace --values values.yaml
 ```
-等待 Pod 重启完成后（可使用 kubectl get pods -n kong 查看状态），你的插件环境就绪。
+等待 Pod 重启完成后（可使用 `kubectl get pods -n kong` 查看状态），你的插件环境就绪。
 
 ## 四、启用插件并验证 Admission Webhook
 插件环境就绪后，即可创建你的 jwt-add-custom-header.yaml（KongPlugin CRD）：
@@ -52,6 +52,8 @@ config:
   header_value: "HelloWorld"
 ```
 
+运行 `kubectl apply -f jwt-add-custom-header.yaml` 安装插件。
+
 然后在 Service 或 Ingress 上添加 annotation 启用插件：
 
 ```yaml
@@ -60,5 +62,3 @@ metadata:
     konghq.com/plugins: add-custom-header
 
 ```
-
-此时 Admission Webhook 校验应不会再报错，因为插件已在 KONG_PLUGINS 中启用。
